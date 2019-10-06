@@ -1,0 +1,78 @@
+version: "3.7"
+
+services:
+
+  proxy:
+    build: ./nginx
+    container_name: proxy
+    image: proxy:1.0
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8001:80"
+      - "0.0.0.0:8000:80"
+    networks:
+      - flask-celery-redis
+    healthcheck:
+      test: ["CMD", "service", "nginx", "status", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
+  api:
+    build: ./flaskapp
+    container_name: api
+    image: api:1.0
+    depends_on:
+      - redis-db
+    expose:
+      - "8080"
+    networks:
+      flask-celery-redis:
+        aliases:
+          - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery:
+    build: ./flaskapp
+    command: ["pipenv", "run", "celery", "-A", "async_tasks", "worker", "-l", "info", "-P", "solo"]
+    container_name: celery
+    image: celery:1.0
+    depends_on:
+      - redis-db
+    networks:
+      - flask-celery-redis
+
+  redis-db:
+    build: ./redis
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    container_name: redis-db
+    image: redis-db:1.0
+    networks:
+      flask-celery-redis:
+        aliases:
+          - redis-db
+    volumes:
+      - type: volume
+        source: redis-volume
+        target: /data/redis-volume
+        volume:
+          no-copy: true
+
+networks:
+  flask-celery-redis:
+    name: flask-celery-redis
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 168.10.10.0/24
+
+volumes:
+  redis-volume:
+    name: redis-volume
