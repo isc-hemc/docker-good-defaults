@@ -1,0 +1,74 @@
+version : "3.7"
+
+services:
+  db:
+    build: ./db
+    container_name: wpdb
+    env_file:
+      - ./db/wpdb.env
+    image: wpdb:1.0
+    networks:
+      wp-network:
+        aliases:
+          - wpdb-net
+    restart: always
+    volumes:
+      - source: wpdb-volume
+        target: /var/lib/mysql
+        type: volume
+
+  pma:
+    build: ./pma
+    container_name: pma
+    depends_on:
+      - db
+    env_file:
+      - ./pma/pma.env
+    image: pma:1.0
+    networks:
+      wp-network:
+        aliases:
+          - pma-net
+    ports:
+      - published: "8080"
+        target: "80"
+    restart: always
+
+  wp:
+    build: ./wp
+    container_name: wp
+    depends_on:
+      - db
+    env_file:
+      - ./wp/wp.env
+    image: wp:1.0
+    networks:
+      wp-network:
+        aliases:
+          - wp-net
+    ports:
+      - published: "8000"
+        target: "80"
+    restart: always
+    volumes:
+      - source: ./wp-content/plugins/
+        target: /var/www/html/wp-content/plugins/
+        type: bind
+      - source: ./wp-content/themes/
+        target: /var/www/html/wp-content/themes/
+        type: bind
+      - source: ./wp-content/mu-plugins/
+        target: /var/www/html/wp-content/mu-plugins/
+        type: bind
+
+networks:
+  wp-network:
+    name: wp-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 168.10.10.0/24
+
+volumes:
+  wpdb-volume:
+    name: wpdb-volume
