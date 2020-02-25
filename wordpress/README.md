@@ -23,7 +23,7 @@
 
 ### Database
 
-To run this system it's necessary an **environment file** (**.env**) in the *db* folder, `./wpdb/db.env`.
+To run this system it's necessary an **environment file** (**.env**) in the *db* folder, `./db/wpdb.env`.
 
 ``` bash
 touch db.env
